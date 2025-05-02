@@ -1,0 +1,493 @@
+/* --- إعادة تعيين أساسية ومتغيرات --- */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+    /* --- الألوان الأساسية (Dark Theme) --- */
+    --main-bg-color: #212121;       /* Dark grey background */
+    --controls-bg: #333333;       /* Darker grey for controls */
+    --text-color: #e0e0e0;        /* Light grey text */
+    --border-color: #555555;      /* Darker border */
+    --input-bg: #444444;
+    --input-text: #e0e0e0;
+    --list-bg: #424242;
+    --list-text: #e0e0e0;
+    --list-border: #555555;
+    --logo-bg: #424242;
+    --logo-border: #555555;
+    --logo-text: #64B5F6;         /* Light blue text */
+    --focus-shadow-color: rgba(100, 181, 246, 0.3); /* Focus glow */
+
+    /* --- ألوان الأزرار (Dark Theme) --- */
+    --button-bg: #555555;
+    --button-text: #ffffff;
+    --button-hover-bg: #666666;
+    --primary-button-active: #4CAF50; /* Green for active spin */
+    --primary-button-active-hover: #388E3C;
+    --danger-button: #dc3545;        /* Keep danger red */
+    --danger-button-hover: #c82333;
+    --disabled-button-bg: #555;     /* Dark disabled */
+    --disabled-button-text: #aaa;
+    --disabled-spin-button-bg: #555; /* Match general disabled */
+
+    /* --- ألوان العجلة والمؤشر --- */
+    --pointer-color: #a0a0a0;     /* Grey pointer */
+    --wheel-center-bg: #ffffff; /* Plain white center */
+    --wheel-border-color: #ffffff; /* White lines between segments */
+    --wheel-text-color: #000000; /* Black text on segments */
+
+    /* --- ألوان منطقة الفائز --- */
+    --winner-bg: #4CAF50;        /* Green background for winner */
+    --winner-border: #388E3C;
+    --winner-text: #ffffff;      /* White text for winner */
+
+    /* --- أحجام الخطوط (No changes needed) --- */
+    --base-font-size: 16px;
+    --h1-font-size: 1.4rem;
+    --h2-font-size: 1rem;
+    --button-font-size: 0.95rem;
+    --input-font-size: 0.95rem;
+    --info-font-size: 0.85rem;
+    --list-font-size: 0.9rem;
+    --footer-font-size: 0.8rem;
+}
+
+body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    background-color: var(--main-bg-color); /* Dark theme background */
+    color: var(--text-color);             /* Light text */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 10px; /* Reduced padding */
+    line-height: 1.5;
+    font-size: var(--base-font-size);
+    overflow-x: hidden; /* Prevent horizontal scroll */
+}
+
+/* --- حاوية التطبيق الرئيسية (Flexbox) --- */
+#app-container {
+    display: flex;
+    /* Default: horizontal for desktop (controls left, wheel right) */
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 25px; /* Spacing */
+    width: 100%;
+    max-width: 1300px; /* Max width for desktop */
+    margin-bottom: 20px;
+    align-items: flex-start;
+}
+
+/* --- قسم التحكم (الآن على اليسار / أعلى) --- */
+.controls-section {
+    flex: 1; /* Takes less space */
+    background-color: var(--controls-bg);
+    padding: 20px; /* Slightly reduced padding */
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); /* Darker shadow */
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Reduced gap */
+    min-width: 280px;
+    max-width: 350px; /* Keep max-width */
+    align-self: stretch;
+    order: 1; /* Default order (left) */
+}
+
+/* --- قسم العجلة (الآن على اليمين / أسفل) --- */
+.wheel-section {
+    flex: 2; /* Takes more space */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px; /* Reduced padding */
+    min-width: 300px;
+    order: 2; /* Default order (right) */
+    align-self: stretch; /* Match height if possible */
+}
+
+/* حاوية العجلة الخارجية (Structure & Background) */
+#wheelOuterContainer {
+    position: relative;
+    width: 100%;
+    /* Max width for desktop, overridden for mobile */
+    max-width: 600px;
+    aspect-ratio: 1 / 1;
+    margin: auto;
+    /* Minimal padding around canvas, matches background */
+    padding: 5px;
+    background-color: var(--main-bg-color);
+    border-radius: 50%;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15); /* Subtle shadow */
+    display: flex; /* Center canvas */
+    justify-content: center;
+    align-items: center;
+}
+
+/* حاوية العجلة الداخلية (Canvas wrapper) */
+#wheelContainer {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+#wheelCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+}
+
+/* --- تصميم المؤشر --- */
+#pointer {
+    width: 0;
+    height: 0;
+    border-top: 18px solid transparent; /* Slightly smaller */
+    border-bottom: 18px solid transparent;
+    border-right: 28px solid var(--pointer-color);
+    position: absolute;
+    top: 50%;
+    /* Position relative to the outer container's edge */
+    right: -8px; /* Slightly outside the padding edge */
+    transform: translateY(-50%);
+    z-index: 10;
+    filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.3));
+}
+
+/* --- زخرفة مركز العجلة (Simple White Circle) --- */
+#wheelCenterDecoration {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 12%; /* Adjust size as needed */
+    height: 12%;
+    background: var(--wheel-center-bg); /* Plain white */
+    border-radius: 50%;
+    /* Removed border and shadow */
+    z-index: 5;
+}
+
+/* --- عناصر التحكم بالثيم الداكن --- */
+
+.logo-placeholder {
+    text-align: center;
+    font-size: var(--h1-font-size);
+    font-weight: bold;
+    color: var(--logo-text);
+    padding: 10px;
+    background-color: var(--logo-bg);
+    border-radius: 6px;
+    border: 1px solid var(--logo-border);
+}
+
+#winnerDisplay {
+    background-color: var(--winner-bg);
+    color: var(--winner-text);
+    padding: 15px 20px;
+    border-radius: 6px;
+    border: 1px solid var(--winner-border);
+    width: 100%;
+    text-align: center;
+    transition: all 0.3s ease;
+    opacity: 1;
+    transform: scale(1);
+    visibility: visible;
+    order: 1;
+    overflow: hidden;
+}
+
+#winnerDisplay.hidden {
+    opacity: 0;
+    transform: scale(0.9);
+    height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-width: 0;
+    margin-top: -15px; /* Adjust for reduced gap */
+    margin-bottom: 0;
+    visibility: hidden;
+}
+
+#winnerDisplay p:first-child {
+    font-size: var(--info-font-size);
+    margin-bottom: 4px;
+}
+
+#winnerName {
+    font-size: clamp(1.6rem, 5vw, 2rem);
+    font-weight: bold;
+    word-wrap: break-word;
+}
+
+#spinButton {
+    color: var(--button-text);
+    padding: 14px 25px;
+    font-size: 1.3rem;
+    font-weight: bold;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    width: 100%;
+    order: 2;
+    background-color: var(--disabled-spin-button-bg); /* Default disabled */
+}
+
+#spinButton:not(:disabled) {
+    background-color: var(--primary-button-active); /* Green when active */
+}
+
+#spinButton:hover:not(:disabled) {
+    background-color: var(--primary-button-active-hover);
+}
+
+#spinButton:disabled {
+    background-color: var(--disabled-spin-button-bg);
+    color: var(--disabled-button-text);
+    cursor: not-allowed;
+}
+
+#participantInfo {
+    text-align: center;
+    color: #aaa; /* Lighter grey for info */
+    font-size: var(--info-font-size);
+    min-height: 1.2em;
+    order: 3;
+}
+
+.participant-manager {
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px; /* Reduced gap */
+    order: 4;
+    background-color: var(--controls-bg); /* Match controls background */
+}
+
+.participant-manager h2 {
+    font-size: var(--h2-font-size);
+    margin-bottom: 8px;
+    text-align: center;
+    color: var(--text-color); /* Use main light text color */
+    font-weight: 600;
+}
+
+.input-area {
+    display: flex;
+    gap: 8px;
+}
+
+#participantInput {
+    flex-grow: 1;
+    padding: 9px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: var(--input-font-size);
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    background-color: var(--input-bg);
+    color: var(--input-text);
+}
+
+#participantInput:focus {
+    border-color: var(--logo-text);
+    box-shadow: 0 0 0 3px var(--focus-shadow-color);
+}
+
+#addButton {
+    padding: 9px 18px;
+    background-color: var(--button-bg); /* Use general button style */
+    color: var(--button-text);
+    border: none;
+    border-radius: 4px;
+    font-size: var(--button-font-size);
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    flex-shrink: 0;
+}
+#addButton:hover:not(:disabled) {
+    background-color: var(--button-hover-bg);
+}
+
+#clearButton {
+    padding: 8px 20px;
+    background-color: var(--danger-button); /* Keep danger color */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: var(--button-font-size);
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    align-self: center;
+    margin-top: 8px;
+}
+#clearButton:hover:not(:disabled) {
+    background-color: var(--danger-button-hover);
+}
+
+#addButton:disabled,
+#clearButton:disabled {
+     background-color: var(--disabled-button-bg);
+     color: var(--disabled-button-text);
+     cursor: not-allowed;
+}
+
+.participant-list-area {
+    max-height: 120px;
+    overflow-y: auto;
+    padding: 8px;
+    background-color: var(--list-bg);
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    font-size: var(--list-font-size);
+    color: var(--list-text);
+}
+
+.participant-list-area p {
+    margin-bottom: 4px;
+    padding-bottom: 4px;
+    border-bottom: 1px dashed var(--list-border);
+    word-wrap: break-word;
+}
+
+.participant-list-area p:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+/* --- التذييل --- */
+footer {
+    margin-top: 25px;
+    padding: 10px;
+    text-align: center;
+    font-size: var(--footer-font-size);
+    color: #888; /* Keep footer subtle */
+    width: 100%;
+}
+
+
+/* --- Media Queries للتجاوب --- */
+
+/* شاشات سطح مكتب كبيرة جداً (أكبر من 1400px) */
+@media (min-width: 1400px) {
+    #wheelOuterContainer { max-width: 650px; } /* Larger wheel */
+    .wheel-section { flex: 2.5; }
+    .controls-section { flex: 1; }
+}
+
+/* لابتوب (بين 993px و 1399px) */
+/* Default desktop styles apply */
+
+
+/* تابلت كبير أفقي / لابتوب صغير (حتى 992px) - نقطة التحول الرئيسية للتخطيط العمودي */
+@media (max-width: 992px) {
+    #app-container {
+        flex-direction: column; /* Stack vertically */
+        align-items: center;
+        gap: 20px; /* Adjust gap */
+        max-width: 700px; /* Limit width */
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .controls-section {
+        order: 2; /* Controls below wheel */
+        width: 100%;
+        max-width: 550px; /* Max width for controls */
+        align-self: center;
+        padding: 15px; /* Adjust padding */
+    }
+     .wheel-section {
+        order: 1; /* Wheel on top */
+        width: 100%;
+        padding: 10px 0; /* Adjust padding */
+        align-self: center; /* Center wheel section */
+    }
+    #wheelOuterContainer {
+        /* Make wheel responsive, limit by viewport width */
+        max-width: min(500px, 90vw);
+        padding: 5px;
+        margin: 10px auto; /* Center with margin */
+    }
+    #pointer {
+        border-top-width: 16px;
+        border-bottom-width: 16px;
+        border-right-width: 26px;
+        right: -6px; /* Adjust position */
+    }
+    #wheelCenterDecoration {
+        width: 10%; /* Smaller center */
+        height: 10%;
+    }
+    .participant-list-area { max-height: 100px; } /* Adjust height */
+    #spinButton { font-size: 1.2rem; padding: 12px 20px; }
+}
+
+/* تابلت عمودي (حتى 768px) */
+@media (max-width: 768px) {
+    #wheelOuterContainer {
+        max-width: min(420px, 88vw); /* Further reduce size */
+     }
+    #pointer {
+        border-top-width: 14px;
+        border-bottom-width: 14px;
+        border-right-width: 22px;
+        right: -5px;
+    }
+    /* Adjust font sizes slightly */
+    :root {
+        --h1-font-size: 1.3rem;
+        --h2-font-size: 0.95rem;
+        --button-font-size: 0.9rem;
+        --info-font-size: 0.8rem;
+    }
+    #spinButton { font-size: 1.15rem; padding: 11px 18px; }
+    #winnerName { font-size: clamp(1.4rem, 4.5vw, 1.8rem); }
+}
+
+
+/* هاتف صغير (حتى 480px) */
+@media (max-width: 480px) {
+    body { padding: 5px; } /* Less padding */
+    #app-container { gap: 15px; }
+    .wheel-section { padding: 5px 0; }
+    .controls-section { padding: 10px; }
+    #wheelOuterContainer {
+        max-width: 85vw; /* Use viewport width */
+        padding: 3px; /* Minimal padding */
+    }
+    #pointer {
+        border-top-width: 12px;
+        border-bottom-width: 12px;
+        border-right-width: 18px;
+        right: -4px;
+    }
+    #wheelCenterDecoration {
+        width: 8%; /* Even smaller center */
+        height: 8%;
+    }
+    /* Adjust font sizes further */
+    :root {
+        --h1-font-size: 1.2rem;
+        --h2-font-size: 0.9rem;
+        --button-font-size: 0.85rem;
+        --input-font-size: 0.9rem;
+        --list-font-size: 0.85rem;
+        --footer-font-size: 0.7rem; /* Smaller footer */
+    }
+    #spinButton { font-size: 1.1rem; padding: 10px 15px; }
+    #addButton, #clearButton { padding: 8px 15px; }
+    #winnerName { font-size: clamp(1.2rem, 4vw, 1.6rem); }
+    .participant-list-area { max-height: 80px; }
+    #participantInput { padding: 8px 10px; }
+    footer { font-size: var(--footer-font-size); }
+}
